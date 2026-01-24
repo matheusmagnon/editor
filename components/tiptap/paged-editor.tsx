@@ -26,7 +26,7 @@ export function PagedEditor() {
   const [pages, setPages] = useState<PageData[]>([
     { id: "page-1", content: "" },
   ]);
-  const pageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const pageRefs = useRef<Map<string, HTMLElement>>(new Map());
   const isProcessing = useRef(false);
   const focusInfo = useRef<{ pageId: string; offset: number } | null>(null);
 
@@ -85,7 +85,27 @@ export function PagedEditor() {
     selection.addRange(range);
   }, []);
 
-  const processOverflow = useCallback(() => {
+  // Helper function to measure text height
+  const measureTextHeight = useCallback((text: string): number => {
+    const measureDiv = document.createElement("div");
+    measureDiv.style.cssText = `
+      position: absolute;
+      visibility: hidden;
+      width: ${PAGE_WIDTH_PX - PAGE_MARGIN_PX * 2}px;
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    `;
+    measureDiv.innerText = text;
+    document.body.appendChild(measureDiv);
+    const height = measureDiv.scrollHeight;
+    document.body.removeChild(measureDiv);
+    return height;
+  }, []);
+
+  const redistributeContent = useCallback(() => {
     if (isProcessing.current) return;
     isProcessing.current = true;
 
@@ -93,6 +113,75 @@ export function PagedEditor() {
       const newPages = [...currentPages];
       let changed = false;
 
+      // FASE 1: Pull content - puxar conteúdo da próxima página quando há espaço
+      for (let i = 0; i < newPages.length - 1; i++) {
+        const pageEl = pageRefs.current.get(newPages[i].id);
+        if (!pageEl) continue;
+
+        const contentEl = pageEl.querySelector(".page-content") as HTMLElement;
+        if (!contentEl) continue;
+
+        const nextPage = newPages[i + 1];
+        const currentText = newPages[i].content;
+
+        // Medir altura do conteúdo atual usando o state, não o DOM
+        const currentHeight = currentText.trim()
+          ? measureTextHeight(currentText)
+          : 0;
+
+        // Se há espaço disponível e próxima página tem conteúdo
+        if (currentHeight < CONTENT_HEIGHT_PX && nextPage.content.trim()) {
+          saveCursorPosition(newPages[i].id);
+          const nextText = nextPage.content;
+          const combinedText =
+            currentText + (currentText && nextText ? " " : "") + nextText;
+          const words = combinedText.split(/(\s+)/);
+
+          // Testar quanto do texto combinado cabe na página atual
+          let fitIndex = words.length;
+          let testText = "";
+          const currentWords = currentText.split(/(\s+)/);
+
+          for (let j = 0; j < words.length; j++) {
+            testText += words[j];
+            const testHeight = measureTextHeight(testText);
+            if (testHeight > CONTENT_HEIGHT_PX) {
+              // Se excedeu na primeira palavra (j=0), não cabe nada
+              // Caso contrário, usar j-1 para pegar o máximo que cabe antes de exceder
+              fitIndex = j === 0 ? 0 : Math.max(1, j - 1);
+              break;
+            }
+          }
+
+          // Se cabe mais que o conteúdo atual, redistribuir
+          // Ou se página está vazia e conseguiu encaixar ao menos 1 palavra
+          if (
+            fitIndex > currentWords.length ||
+            (currentWords.length <= 1 && fitIndex >= 1)
+          ) {
+            const keepText = words.slice(0, fitIndex).join("");
+            const remainingText = words.slice(fitIndex).join("");
+
+            newPages[i] = { ...newPages[i], content: keepText };
+            newPages[i + 1] = { ...newPages[i + 1], content: remainingText };
+
+            // Atualizar cursor se necessário
+            if (focusInfo.current?.pageId === newPages[i + 1].id) {
+              const movedLength = keepText.length - currentText.length;
+              if (movedLength > 0) {
+                focusInfo.current = {
+                  pageId: newPages[i].id,
+                  offset: focusInfo.current.offset + movedLength,
+                };
+              }
+            }
+
+            changed = true;
+          }
+        }
+      }
+
+      // FASE 2: Overflow - mover conteúdo para próxima página quando excede limite
       for (let i = 0; i < newPages.length; i++) {
         const pageEl = pageRefs.current.get(newPages[i].id);
         if (!pageEl) continue;
@@ -106,32 +195,17 @@ export function PagedEditor() {
           const text = contentEl.innerText || "";
           const words = text.split(/(\s+)/);
 
-          const measureDiv = document.createElement("div");
-          measureDiv.style.cssText = `
-            position: absolute;
-            visibility: hidden;
-            width: ${PAGE_WIDTH_PX - PAGE_MARGIN_PX * 2}px;
-            font-family: Arial, sans-serif;
-            font-size: 16px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-break: break-word;
-          `;
-          document.body.appendChild(measureDiv);
-
           let cutIndex = words.length;
           let testText = "";
 
           for (let j = 0; j < words.length; j++) {
             testText += words[j];
-            measureDiv.innerText = testText;
-            if (measureDiv.scrollHeight > CONTENT_HEIGHT_PX) {
+            const testHeight = measureTextHeight(testText);
+            if (testHeight > CONTENT_HEIGHT_PX) {
               cutIndex = Math.max(1, j);
               break;
             }
           }
-
-          document.body.removeChild(measureDiv);
 
           if (cutIndex < words.length) {
             const keepText = words.slice(0, cutIndex).join("");
@@ -189,16 +263,16 @@ export function PagedEditor() {
 
       return changed ? newPages : currentPages;
     });
-  }, [saveCursorPosition, restoreCursorPosition]);
+  }, [saveCursorPosition, restoreCursorPosition, measureTextHeight]);
 
-  const processTimeoutRef = useRef<NodeJS.Timeout>();
+  const processTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const scheduleProcess = useCallback(() => {
     if (processTimeoutRef.current) {
       clearTimeout(processTimeoutRef.current);
     }
-    processTimeoutRef.current = setTimeout(processOverflow, 100);
-  }, [processOverflow]);
+    processTimeoutRef.current = setTimeout(redistributeContent, 100);
+  }, [redistributeContent]);
 
   const handleInput = useCallback(
     (pageId: string, e: React.FormEvent<HTMLDivElement>) => {
@@ -277,7 +351,7 @@ export function PagedEditor() {
     window.print();
   };
 
-  const setPageRef = useCallback((id: string, el: HTMLDivElement | null) => {
+  const setPageRef = useCallback((id: string, el: HTMLElement | null) => {
     if (el) {
       pageRefs.current.set(id, el);
     } else {
