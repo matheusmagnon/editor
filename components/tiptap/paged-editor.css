@@ -1,211 +1,214 @@
 /* ===========================================
-   PAGED EDITOR - CSS para tela e impressão
-   Abordagem: CSS puro separado para garantir
-   que @media print funcione corretamente
+   PAGED EDITOR - TipTap + PaginationPlus
+   Estilos para tela e impressão
    =========================================== */
 
-/* Variáveis CSS para consistência */
 :root {
-    --page-width: 794px;
-    --page-height: 1123px;
-    --page-margin: 96px;
-    --page-gap: 40px;
-  }
-  
-  /* ===== ESTILOS DE TELA ===== */
-  
-  .paged-editor {
-    min-height: 100vh;
-    background: #f8f9fa;
-  }
-  
-  .paged-editor-toolbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    background: white;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 8px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .paged-editor-toolbar h1 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #1f2937;
+  --paged-page-width: 794px;
+  --paged-page-height: 1123px;
+  --paged-page-margin: 96px;
+  --paged-page-gap: 40px;
+}
+
+/* ===== LAYOUT PRINCIPAL ===== */
+
+.paged-editor {
+  min-height: 100vh;
+  background: #f8f9fa;
+}
+
+.paged-editor-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.paged-editor-toolbar h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.paged-editor-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.paged-editor-print-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.paged-editor-print-hint {
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 0;
+  margin-top: 4px;
+}
+
+.paged-editor-page-count {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.paged-editor-document {
+  padding-top: 80px;
+  padding-bottom: 60px;
+  display: block;
+}
+
+/* Wrapper do EditorContent - centraliza o editor paginado.
+   Usar display: block para não interferir no layout float interno da extensão. */
+.paged-editor-wrapper {
+  width: 100%;
+  display: block;
+}
+
+.paged-editor-wrapper > div {
+  margin: 0 auto;
+}
+
+/* Container do TipTap - o editor view.dom recebe rm-with-pagination.
+   NÃO definir min-height aqui: a extensão gerencia altura via refreshPage(). */
+.paged-editor-wrapper .tiptap {
+  background: white;
+  box-shadow: 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  outline: none;
+}
+
+/* ProseMirror content area */
+.paged-editor-prosemirror {
+  font-family: Arial, sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+}
+
+.paged-editor-prosemirror p {
+  margin: 0 0 0.5em 0;
+}
+
+.paged-editor-prosemirror p:last-child {
+  margin-bottom: 0;
+}
+
+/* Placeholder quando vazio */
+.paged-editor-prosemirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Loading state */
+.paged-editor-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 80px;
+}
+
+.paged-editor-loading-message {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* ===== ESTILOS DE IMPRESSÃO ===== */
+
+@media print {
+  @page {
+    size: A4 portrait;
     margin: 0;
   }
-  
-  .paged-editor-toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+
+  /* Esconder toolbar e TODOS os elementos visuais da extensão.
+     Listados individualmente (belt + suspenders) para garantir que
+     nenhum vaze mesmo que o display: none no pai não seja honrado. */
+  .paged-editor-toolbar,
+  [data-rm-pagination],
+  .rm-first-page-header,
+  .rm-page-break,
+  .rm-page-footer,
+  .rm-page-footer-left,
+  .rm-page-footer-right,
+  .rm-page-header,
+  .rm-page-header-left,
+  .rm-page-header-right,
+  .rm-br-decoration {
+    display: none !important;
   }
-  
-  .paged-editor-page-count {
-    font-size: 14px;
-    color: #6b7280;
+
+  /* Barra cinza entre páginas: .rm-pagination-gap (border #e5e5e5).
+     display:none + fallback para zerar dimensões/bordas se o browser ignorar. */
+  .rm-pagination-gap,
+  .rm-with-pagination .rm-pagination-gap,
+  [data-rm-pagination] .rm-pagination-gap {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    border: none !important;
+    background: transparent !important;
   }
-  
-  .paged-editor-document {
-    padding-top: 64px;
-    padding-bottom: 40px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--page-gap);
+
+  html,
+  body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
-  
-  .paged-editor-page {
-    width: var(--page-width);
-    height: var(--page-height);
-    background: white;
-    box-shadow: 0 1px 3px 1px rgba(60, 64, 67, 0.15);
-    position: relative;
-    box-sizing: border-box;
-    overflow: hidden;
+
+  .paged-editor,
+  .paged-editor-document,
+  .paged-editor-wrapper,
+  .paged-editor-wrapper > div {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    width: 100% !important;
   }
-  
-  .page-content {
-    position: absolute;
-    top: var(--page-margin);
-    left: var(--page-margin);
-    right: var(--page-margin);
-    /* bottom considera: margem + espaço do rodapé (40px) */
-    bottom: calc(var(--page-margin) + 40px);
-    font-family: Arial, sans-serif;
-    font-size: 16px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-word;
-    overflow: hidden;
-    outline: none;
+
+  /* Resetar os estilos inline que a extensão aplica em onCreate() e refreshPage():
+     border: 1px solid #e5e5e5          → fonte das barras cinzas
+     padding: compensa @page margin: 0   → evita headers/footers nativos do browser
+     min-height: calc(Npx + 2px)        → fonte da página 3 em branco */
+  .paged-editor-wrapper .tiptap,
+  .paged-editor-wrapper .rm-with-pagination {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 28mm 20mm !important;
+    margin: 0 !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: white !important;
   }
-  
-  .page-content:empty::before {
-    content: attr(data-placeholder);
-    color: #9ca3af;
-    pointer-events: none;
+
+  /* Tipografia consistente com a tela */
+  .paged-editor-prosemirror {
+    font-family: Arial, sans-serif !important;
+    font-size: 16px !important;
+    line-height: 1.6 !important;
   }
-  
-  .page-footer {
-    position: absolute;
-    bottom: var(--page-margin);
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-size: 12px;
-    color: #9ca3af;
-    font-family: Arial, sans-serif;
-    height: 24px;
+
+  /* Parágrafos mantêm o mesmo espaçamento da tela */
+  .paged-editor-prosemirror p {
+    margin: 0 0 0.5em 0 !important;
   }
-  
-  /* ===== ESTILOS DE IMPRESSÃO ===== */
-  
-  @media print {
-    /* Reset total para impressão */
-    * {
-      margin: 0 !important;
-      padding: 0 !important;
-      box-shadow: none !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-  
-    /* Configuração da página */
-    @page {
-      size: A4 portrait;
-      margin: 0;
-    }
-  
-    /* Esconde elementos não imprimíveis */
-    .paged-editor-toolbar {
-      display: none !important;
-    }
-  
-    /* Container principal */
-    .paged-editor {
-      min-height: auto !important;
-      background: white !important;
-      display: block !important;
-    }
-  
-    /* Container de documento */
-    .paged-editor-document {
-      display: block !important;
-      padding: 0 !important;
-      gap: 0 !important;
-      margin: 0 !important;
-    }
-  
-    /* Cada página */
-    .paged-editor-page {
-      width: 210mm !important;
-      height: 297mm !important;
-      max-height: 297mm !important;
-      background: white !important;
-      position: relative !important;
-      display: block !important;
-      overflow: hidden !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      
-      /* Quebra de página - CRÍTICO */
-      page-break-after: always !important;
-      break-after: page !important;
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-    }
-  
-    /* Última página NÃO quebra depois */
-    .paged-editor-page:last-child {
-      page-break-after: avoid !important;
-      break-after: avoid !important;
-    }
-  
-    /* Conteúdo da página */
-    .page-content {
-      position: absolute !important;
-      top: 25.4mm !important;
-      left: 25.4mm !important;
-      right: 25.4mm !important;
-      /* bottom considera: margem + espaço do rodapé (10mm) */
-      bottom: calc(25.4mm + 10mm) !important;
-      overflow: hidden !important;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-  
-    /* Placeholder não aparece na impressão */
-    .page-content:empty::before {
-      display: none !important;
-    }
-  
-    /* Rodapé da página */
-    .page-footer {
-      position: absolute !important;
-      bottom: 25.4mm !important;
-      left: 0 !important;
-      right: 0 !important;
-      text-align: center !important;
-      font-size: 10pt !important;
-      color: #666 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      height: 8mm !important;
-    }
-  
-    /* Garante que html e body não adicionem espaço */
-    html, body {
-      width: 210mm !important;
-      height: auto !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      background: white !important;
-    }
-  }
-  
+}
