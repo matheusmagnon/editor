@@ -111,6 +111,12 @@
   height: 0;
 }
 
+/* DEBUG: coloração por página de impressão (visível só na tela, removido no print) */
+[data-debug-print-page="1"] { outline: 3px solid #3b82f6 !important; }
+[data-debug-print-page="2"] { outline: 3px solid #f97316 !important; }
+[data-debug-print-page="3"] { outline: 3px solid #22c55e !important; }
+[data-debug-print-page="4"] { outline: 3px solid #a855f7 !important; }
+
 /* Loading state */
 .paged-editor-loading {
   display: flex;
@@ -129,12 +135,15 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 0;
+    /* Margens equivalentes às da extensão em 96dpi:
+       marginTop/Bottom = 95px ≈ 25mm, marginLeft/Right = 76px ≈ 20mm.
+       O JS injeta break-before:page nos pontos exatos calculados
+       pela extensão, então a paginação corresponde à tela. */
+    margin: 31mm 20mm;
   }
 
-  /* Esconder toolbar e TODOS os elementos visuais da extensão.
-     Listados individualmente (belt + suspenders) para garantir que
-     nenhum vaze mesmo que o display: none no pai não seja honrado. */
+  /* Esconder todos os elementos de paginação da extensão.
+     As quebras de página são gerenciadas pelo JS via break-before:page. */
   .paged-editor-toolbar,
   [data-rm-pagination],
   .rm-first-page-header,
@@ -149,25 +158,13 @@
     display: none !important;
   }
 
-  /* Barra cinza entre páginas: .rm-pagination-gap (border #e5e5e5).
-     display:none + fallback para zerar dimensões/bordas se o browser ignorar. */
-  .rm-pagination-gap,
-  .rm-with-pagination .rm-pagination-gap,
-  [data-rm-pagination] .rm-pagination-gap {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-    border: none !important;
-    background: transparent !important;
-  }
-
   html,
-  body {
+  body,
+  main {
     background: white !important;
     margin: 0 !important;
     padding: 0 !important;
+    min-height: 0 !important;
   }
 
   .paged-editor,
@@ -182,17 +179,15 @@
     width: 100% !important;
   }
 
-  /* Resetar os estilos inline que a extensão aplica em onCreate() e refreshPage():
-     border: 1px solid #e5e5e5          → fonte das barras cinzas
-     padding: compensa @page margin: 0   → evita headers/footers nativos do browser
-     min-height: calc(Npx + 2px)        → fonte da página 3 em branco */
+  /* @page margin: 25mm/20mm já provê as margens físicas.
+     .tiptap preenche a área de conteúdo sem padding adicional. */
   .paged-editor-wrapper .tiptap,
   .paged-editor-wrapper .rm-with-pagination {
     box-sizing: border-box !important;
     width: 100% !important;
     min-height: 0 !important;
     height: auto !important;
-    padding: 28mm 20mm !important;
+    padding: 0 !important;
     margin: 0 !important;
     border: none !important;
     outline: none !important;
@@ -211,4 +206,7 @@
   .paged-editor-prosemirror p {
     margin: 0 0 0.5em 0 !important;
   }
+
+  /* Suprimir coloração de debug no print */
+  [data-debug-print-page] { outline: none !important; }
 }
