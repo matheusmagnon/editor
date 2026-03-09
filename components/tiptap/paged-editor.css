@@ -136,10 +136,9 @@
   @page {
     size: A4 portrait;
     /* Margens equivalentes às da extensão em 96dpi:
-       marginTop/Bottom = 95px ≈ 25mm, marginLeft/Right = 76px ≈ 20mm.
-       O JS injeta break-before:page nos pontos exatos calculados
-       pela extensão, então a paginação corresponde à tela. */
-    margin: 31mm 20mm;
+       Sem footer: altura conteúdo = 913px, margens = (1123-913)/2 = 105px ≈ 28mm
+       marginLeft/Right = 76px ≈ 20mm. */
+    margin: 27mm 20mm;
   }
 
   /* Esconder todos os elementos de paginação da extensão.
